@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import FastAPI
+import sqlalchemy as sa
+from fastapi import FastAPI, Response
 
 from rt_collab.config import settings
+from rt_collab.db.engine import get_engine
 
 logger = logging.getLogger("rt_collab")
 
@@ -22,10 +24,21 @@ def create_app() -> FastAPI:
         return {"status": "ok", "instance_id": settings.instance_id}
 
     @app.get("/readyz")
-    async def readyz() -> dict[str, str]:
-        """Readiness probe. Will start checking Redis/MySQL connectivity once
-        those clients are wired in (milestones 2-4)."""
-        return {"status": "ok"}
+    async def readyz(response: Response) -> dict[str, object]:
+        """Readiness probe: can this instance actually reach its dependencies.
+        Redis will be added here once the client is wired in (milestone 4/5)."""
+        checks: dict[str, bool] = {}
+        try:
+            async with get_engine().connect() as conn:
+                await conn.execute(sa.text("SELECT 1"))
+            checks["mysql"] = True
+        except Exception:
+            logger.exception("readyz: mysql check failed")
+            checks["mysql"] = False
+
+        ok = all(checks.values())
+        response.status_code = 200 if ok else 503
+        return {"status": "ok" if ok else "unavailable", "checks": checks}
 
     return app
 

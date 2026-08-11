@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,7 +13,9 @@ class Settings(BaseSettings):
 
     # Identity of this gateway process. Every Pub/Sub message is tagged with this id
     # so an instance can recognize and skip its own re-published messages (loop prevention).
-    instance_id: str = str(uuid.uuid4())
+    # default_factory (not a bare default) so each Settings() instantiation gets its
+    # own id instead of all instances sharing one value computed at class-definition time.
+    instance_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
 
     environment: str = "development"
     log_level: str = "INFO"

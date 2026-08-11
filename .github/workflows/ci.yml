@@ -46,6 +46,9 @@ jobs:
           version: "0.12.2"
           python-version: "3.12"
 
+      - name: Install dependencies
+        run: uv sync --frozen
+
       - name: Build gateway image
         run: docker compose build gateway
 
@@ -61,6 +64,12 @@ jobs:
           echo "gateway did not become healthy in time" >&2
           docker compose logs
           exit 1
+
+      - name: Run migrations
+        run: uv run python -m alembic upgrade head
+
+      - name: Integration tests
+        run: uv run pytest -m integration -q
 
       - name: Compose down
         if: always()
