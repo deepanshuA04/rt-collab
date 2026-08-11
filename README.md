@@ -7,7 +7,7 @@ Redis. Third in a series of portfolio projects (after `desk-agent` and `task-eng
 same working agreement — every number below is measured on stated hardware, including
 targets that were missed and why, not copied from a spec.
 
-**Status: milestone 1 of 10 (scaffold + CI + Docker Compose).** This README will be
+**Status: milestone 2 of 10 (3NF schema + migrations).** This README will be
 filled in with real measurements as each milestone lands; see the checklist below.
 
 ## Architecture — where the CRDT merge actually happens
@@ -59,7 +59,7 @@ Copy `.env.example` to `.env` to override defaults for local runs.
 ## Milestones
 
 - [x] 1. Scaffold + CI skeleton (Windows + Linux) + Docker Compose (redis, mysql, gateway)
-- [ ] 2. Schema + versioned atomic migrations + FK/3NF verification
+- [x] 2. Schema + versioned atomic migrations + FK/3NF verification
 - [ ] 3. WebSocket gateway: handshake auth, connection registry, bounded send queues
 - [ ] 4. Redis Pub/Sub fan-out + multi-instance cross-delivery test
 - [ ] 5. Presence via TTL keys + heartbeat; client reconnect with backoff + state-vector resync
