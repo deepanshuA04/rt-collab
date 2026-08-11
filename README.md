@@ -7,7 +7,7 @@ Redis. Third in a series of portfolio projects (after `desk-agent` and `task-eng
 same working agreement — every number below is measured on stated hardware, including
 targets that were missed and why, not copied from a spec.
 
-**Status: milestone 2 of 10 (3NF schema + migrations).** This README will be
+**Status: milestone 3 of 10 (WebSocket gateway core).** This README will be
 filled in with real measurements as each milestone lands; see the checklist below.
 
 ## Architecture — where the CRDT merge actually happens
@@ -35,6 +35,26 @@ same Rust `yrs` CRDT engine Yjs itself is built on — to generate real, wire-co
 `Y.Doc` updates without needing a browser or Node.js fleet. The gateway still never
 imports it; only the test/load-harness code plays the role of a Yjs client.
 
+## WebSocket gateway: auth and backpressure
+
+- **Auth on the handshake, not after.** `POST /auth/token` exchanges a `client_id`
+  for a signed, timed token (there's no user/password store in this project —
+  that endpoint stands in for "already authenticated with a real IdP, exchanging
+  for a gateway session token"). `/ws/{document_id}?token=...` verifies it
+  *before* accepting the WebSocket upgrade; an invalid or missing token gets the
+  handshake refused outright (HTTP 403), never an accepted-then-closed socket.
+- **Bounded send queue, disconnect on overflow.** Each connection has a capped
+  outbound queue (`RT_WS_SEND_QUEUE_MAXSIZE`, default 32). If a client can't keep
+  up and it fills, the gateway disconnects that client rather than dropping the
+  message and continuing. A silently dropped update would leave that client
+  permanently behind with no signal anything was missed; a disconnect instead
+  drives it through reconnect + state-vector resync (milestone 5), which is
+  self-healing by construction. A slow client's full queue never blocks delivery
+  to anyone else.
+- **Same-instance relay for now.** Milestone 3 fans updates out to other clients
+  on the same document connected to the *same* gateway process. Redis Pub/Sub
+  (milestone 4) extends this across instances without changing this layer.
+
 ## Stack
 
 Python 3.12 (FastAPI + WebSockets) · Redis (Pub/Sub + TTL keys) · MySQL 8 · Yjs (CRDT,
@@ -60,7 +80,7 @@ Copy `.env.example` to `.env` to override defaults for local runs.
 
 - [x] 1. Scaffold + CI skeleton (Windows + Linux) + Docker Compose (redis, mysql, gateway)
 - [x] 2. Schema + versioned atomic migrations + FK/3NF verification
-- [ ] 3. WebSocket gateway: handshake auth, connection registry, bounded send queues
+- [x] 3. WebSocket gateway: handshake auth, connection registry, bounded send queues
 - [ ] 4. Redis Pub/Sub fan-out + multi-instance cross-delivery test
 - [ ] 5. Presence via TTL keys + heartbeat; client reconnect with backoff + state-vector resync
 - [ ] 6. Yjs update relay + persistence (append-only log) + client harness holding a Y.Doc

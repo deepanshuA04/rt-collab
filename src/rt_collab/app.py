@@ -9,6 +9,8 @@ from fastapi import FastAPI, Response
 
 from rt_collab.config import settings
 from rt_collab.db.engine import get_engine
+from rt_collab.routes import router as http_router
+from rt_collab.ws import router as ws_router
 
 logger = logging.getLogger("rt_collab")
 
@@ -39,6 +41,9 @@ def create_app() -> FastAPI:
         ok = all(checks.values())
         response.status_code = 200 if ok else 503
         return {"status": "ok" if ok else "unavailable", "checks": checks}
+
+    app.include_router(http_router)
+    app.include_router(ws_router)
 
     return app
 

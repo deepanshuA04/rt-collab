@@ -31,6 +31,12 @@ class Settings(BaseSettings):
     # Shared secret used to sign/verify connection tokens presented at the WebSocket
     # handshake. In production this should come from a real secrets manager.
     auth_secret: str = "dev-secret-change-me"
+    auth_token_max_age_seconds: int = 24 * 60 * 60
+
+    # Bounded outbound backlog per WebSocket connection. When a client can't keep up
+    # and this fills, the connection is dropped rather than the message silently
+    # discarded — see rt_collab.ws.registry.Connection.enqueue for why.
+    ws_send_queue_maxsize: int = 32
 
     @property
     def mysql_dsn(self) -> str:

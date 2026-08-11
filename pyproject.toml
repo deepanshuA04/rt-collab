@@ -9,6 +9,7 @@ dependencies = [
     "alembic>=1.13",
     "cryptography>=43",
     "fastapi>=0.115",
+    "itsdangerous>=2.2",
     "pydantic-settings>=2.6",
     "sqlalchemy[asyncio]>=2.0",
     "uvicorn[standard]>=0.32",
