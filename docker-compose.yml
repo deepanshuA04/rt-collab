@@ -1,0 +1,54 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ${RT_MYSQL_DATABASE:-rt_collab}
+      MYSQL_USER: ${RT_MYSQL_USER:-rt_collab}
+      MYSQL_PASSWORD: ${RT_MYSQL_PASSWORD:-rt_collab}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # NOTE: a second gateway instance (gateway-b) is added in milestone 4 once
+  # Redis Pub/Sub fan-out exists, so cross-instance delivery can be tested for real.
+  gateway:
+    build:
+      context: .
+      dockerfile: docker/gateway.Dockerfile
+    environment:
+      RT_ENVIRONMENT: development
+      RT_INSTANCE_ID: gateway-a
+      RT_REDIS_URL: redis://redis:6379/0
+      RT_MYSQL_HOST: mysql
+      RT_MYSQL_PORT: "3306"
+      RT_MYSQL_USER: ${RT_MYSQL_USER:-rt_collab}
+      RT_MYSQL_PASSWORD: ${RT_MYSQL_PASSWORD:-rt_collab}
+      RT_MYSQL_DATABASE: ${RT_MYSQL_DATABASE:-rt_collab}
+      RT_AUTH_SECRET: ${RT_AUTH_SECRET:-dev-secret-change-me}
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+
+volumes:
+  mysql-data:

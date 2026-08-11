@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "0.12.2"
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Test
+        run: uv run pytest -q
+
+  # Docker Compose brings up redis/mysql containers, which only GH-hosted Linux
+  # runners support reliably (windows-latest lacks a Linux-container Docker engine
+  # by default). Integration tests that need the real stack run here only.
+  integration:
+    name: integration (docker compose, ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "0.12.2"
+          python-version: "3.12"
+
+      - name: Build gateway image
+        run: docker compose build gateway
+
+      - name: Start stack
+        run: docker compose up -d
+
+      - name: Wait for gateway health
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8000/healthz; then exit 0; fi
+            sleep 2
+          done
+          echo "gateway did not become healthy in time" >&2
+          docker compose logs
+          exit 1
+
+      - name: Compose down
+        if: always()
+        run: docker compose down -v
